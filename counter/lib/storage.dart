@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -18,7 +19,8 @@ class CounterStorage {
   Future<bool> writeCounter(int counter) async {
     try {
       File file = await _localFile;
-      await file.writeAsString('$counter');
+      String jsonString = json.encode({"counter": counter});
+      await file.writeAsString(jsonString);
       return true;
     } catch (e) {
       if (kDebugMode) {
@@ -32,7 +34,8 @@ class CounterStorage {
     try {
       File file = await _localFile;
       String contents = await file.readAsString();
-      return int.parse(contents);
+      var countData = json.decode(contents);
+      return countData["counter"];
     } catch (e) {
       if (kDebugMode) {
         print(e);
