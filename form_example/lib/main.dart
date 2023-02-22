@@ -49,6 +49,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final myController = TextEditingController();
 
   @override
@@ -61,6 +62,25 @@ class _MyHomePageState extends State<MyHomePage> {
     if (kDebugMode) {
       print("Textfield text: ${myController.text}");
     }
+  }
+
+  void _submit() {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: const Text('Processing')));
+    if (_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: const Text('Validated')));
+    }
+  }
+
+  String? _textValidator(String? value) {
+    if (value == null || value.isEmpty) {
+      return "Please enter some text";
+    }
+    if (value.contains("@")) {
+      return "Do not use @ char.";
+    }
+    return null;
   }
 
   @override
@@ -80,31 +100,23 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Center(
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            TextField(
-              controller: myController,
-              decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: "Enter a search term"),
-            ),
-          ],
-        ),
+        child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                TextFormField(
+                  controller: myController,
+                  validator: _textValidator,
+                  decoration: const InputDecoration(
+                      icon: Icon(Icons.person),
+                      border: OutlineInputBorder(),
+                      hintText: "What do people call you",
+                      labelText: "Name: "),
+                ),
+                ElevatedButton(onPressed: _submit, child: const Text("Submit"))
+              ],
+            )),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _printText,
