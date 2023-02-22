@@ -21,16 +21,23 @@ class CounterStorage {
   bool get isInitialized => _initialized;
 
   Future<bool> writeCounter(int counter) async {
-    try {
-      if (!isInitialized) {
-        await initializeDefault();
+    if (!isInitialized) {
+      await initializeDefault();
+    }
+    FirebaseFirestore firestore = FirebaseFirestore.instance;
+    firestore.collection("example").doc("cins467").set({
+      'count': counter,
+    }).then((value) {
+      if (kDebugMode) {
+        print("Count added");
       }
       return true;
-    } catch (e) {
+    }).catchError((error) {
       if (kDebugMode) {
-        print(e);
+        print(error);
       }
-    }
+      return false;
+    });
     return false;
   }
 
@@ -43,6 +50,9 @@ class CounterStorage {
         await firestore.collection("example").doc("cins467").get();
     if (ds.data() != null) {
       Map<String, dynamic> data = (ds.data() as Map<String, dynamic>);
+      if (data.containsKey("count")) {
+        return data["count"];
+      }
     }
     bool writeSuccess = await writeCounter(0);
     if (writeSuccess) {
