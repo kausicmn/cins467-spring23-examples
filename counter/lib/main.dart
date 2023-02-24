@@ -112,10 +112,12 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       widget.storage.isInitialized
           ? StreamBuilder(
-              stream:
-                  FirebaseFirestore.instance.collection("example").snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection("example")
+                  .doc("cins467")
+                  .snapshots(),
               builder: (BuildContext context,
-                  AsyncSnapshot<QuerySnapshot> snapshot) {
+                  AsyncSnapshot<DocumentSnapshot> snapshot) {
                 if (snapshot.hasError) {
                   return Text("Error: ${snapshot.error.toString()}");
                 } else {
@@ -126,7 +128,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     print(snapshot.data);
                   }
                   return Text(
-                    snapshot.data!.docs[0]["count"].toString(),
+                    snapshot.data!["count"].toString(),
                     style: Theme.of(context).textTheme.headlineMedium,
                   );
                 }
