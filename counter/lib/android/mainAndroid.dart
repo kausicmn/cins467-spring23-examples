@@ -7,23 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'android/mainAndroid.dart';
-
-void main() {
-  if (kIsWeb) {
-    runApp(const MyApp(title: "Web"));
-  } else if (Platform.isAndroid) {
-    runApp(const MyAndroidApp(title: "Android"));
-  } else if (Platform.isIOS) {
-    runApp(const MyApp(title: "iOS"));
-  }
-
-  // runApp(const MyApp(title: "default"));
-}
-
-class MyApp extends StatelessWidget {
+class MyAndroidApp extends StatelessWidget {
   final String title;
-  const MyApp({super.key, required this.title});
+  const MyAndroidApp({super.key, required this.title});
 
   // This widget is the root of your application.
   @override
