@@ -1,15 +1,27 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:counter/storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
 
 void main() {
-  runApp(const MyApp());
+  if (kIsWeb) {
+    runApp(const MyApp(title: "Web"));
+  } else if (Platform.isAndroid) {
+    runApp(const MyApp(title: "Android"));
+  } else if (Platform.isIOS) {
+    runApp(const MyApp(title: "iOS"));
+  }
+
+  // runApp(const MyApp(title: "default"));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String title;
+  const MyApp({super.key, required this.title});
 
   // This widget is the root of your application.
   @override
@@ -29,7 +41,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.deepPurple,
       ),
       home: MyHomePage(
-        title: 'Flutter Demo Home Page',
+        title: 'Flutter Demo $title',
         storage: CounterStorage(),
       ),
     );
@@ -49,6 +61,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   late Future<int> _counter;
   late Future<Position> _position;
+  File? _image;
 
   Future<void> _incrementCounter() async {
     int count = await widget.storage.readCounter();
@@ -113,11 +126,27 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+        onPressed: _getImage,
+        tooltip: 'Take Photo',
+        child: const Icon(Icons.add_a_photo),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
+  }
+
+  void _getImage() async {
+    final ImagePicker _picker = ImagePicker();
+    // Capture a photo
+    final XFile? pickedImage =
+        await _picker.pickImage(source: ImageSource.camera);
+    setState(() {
+      if (pickedImage != null) {
+        _image = File(pickedImage.path);
+      } else {
+        if (kDebugMode) {
+          print("No image picked");
+        }
+      }
+    });
   }
 
   /// Determine the current position of the device.
@@ -163,6 +192,16 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<Widget> getBody() {
     return <Widget>[
+      Container(
+          margin: const EdgeInsets.all(10.0),
+          width: 200,
+          height: 200,
+          color: Colors.white,
+          child: _image == null
+              ? Placeholder(
+                  child: Image.network(
+                      "https://t3.ftcdn.net/jpg/02/48/42/64/360_F_248426448_NVKLywWqArG2ADUxDq6QprtIzsF82dMF.jpg"))
+              : Image.file(_image!)),
       FutureBuilder(
           future: _position,
           builder: (BuildContext context, AsyncSnapshot<Position> snapshot) {
