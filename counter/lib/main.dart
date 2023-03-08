@@ -2,18 +2,24 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:counter/storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'android/mainAndroid.dart';
+GoogleSignIn _googleSignIn = GoogleSignIn(
+  scopes: <String>[
+    'email',
+  ],
+);
 
 void main() {
   if (kIsWeb) {
     runApp(const MyApp(title: "Web"));
   } else if (Platform.isAndroid) {
-    runApp(const MyAndroidApp(title: "Android"));
+    runApp(const MyApp(title: "Android"));
   } else if (Platform.isIOS) {
     runApp(const MyApp(title: "iOS"));
   }
@@ -63,8 +69,41 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   late Future<Position> _position;
   late Future<Stream<DocumentSnapshot>> _fbstream;
+  GoogleSignInAccount? googleUser;
 
   File? _image;
+
+  Future<UserCredential> signInWithGoogle() async {
+    if (!widget.storage.isInitialized) {
+      await widget.storage.initializeDefault();
+    }
+    // Trigger the authentication flow
+    googleUser = await _googleSignIn.signIn();
+
+    if (kDebugMode) {
+      if (googleUser != null) {
+        print(googleUser!.displayName);
+      }
+    }
+
+    // Obtain the auth details from the request
+    final GoogleSignInAuthentication? googleAuth =
+        await googleUser?.authentication;
+
+    // Create a new credential
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth?.accessToken,
+      idToken: googleAuth?.idToken,
+    );
+
+    // Once signed in, return the UserCredential
+    return await FirebaseAuth.instance.signInWithCredential(credential);
+  }
+
+  Future<void> _handleSignOut() {
+    FirebaseAuth.instance.signOut();
+    return _googleSignIn.disconnect();
+  }
 
   Future<void> _incrementCounter() async {
     int count = await widget.storage.readCounter();
@@ -88,8 +127,13 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    _position = _determinePosition();
-    _fbstream = widget.storage.getInstanceStream();
+    // _position = _determinePosition();
+    // _fbstream = widget.storage.getInstanceStream();
+    _googleSignIn.onCurrentUserChanged.listen((GoogleSignInAccount? account) {
+      setState(() {
+        googleUser = account;
+      });
+    });
   }
 
   @override
@@ -104,11 +148,11 @@ class _MyHomePageState extends State<MyHomePage> {
           children: getBody(),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _getImage,
-        tooltip: 'Take Photo',
-        child: const Icon(Icons.add_a_photo),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: _getImage,
+      //   tooltip: 'Take Photo',
+      //   child: const Icon(Icons.add_a_photo),
+      // ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 
@@ -170,98 +214,21 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   List<Widget> getBody() {
-    return <Widget>[
-      Container(
-          margin: const EdgeInsets.all(10.0),
-          width: 200,
-          height: 200,
-          color: Colors.white,
-          child: _image == null
-              ? Placeholder(
-                  child: Image.network(
-                      "https://t3.ftcdn.net/jpg/02/48/42/64/360_F_248426448_NVKLywWqArG2ADUxDq6QprtIzsF82dMF.jpg"))
-              : Image.file(_image!)),
-      FutureBuilder(
-          future: _position,
-          builder: (BuildContext context, AsyncSnapshot<Position> snapshot) {
-            switch (snapshot.connectionState) {
-              case ConnectionState.waiting:
-                return const CircularProgressIndicator();
-              default:
-                if (snapshot.hasError) {
-                  return Text("Error: ${snapshot.error}");
-                }
-                return Text(
-                    '${snapshot.data!.latitude}, ${snapshot.data!.longitude}, ${snapshot.data!.accuracy}');
-            }
-          }),
-      const Text(
-        'You pushed my button this many times:',
-      ),
-      FutureBuilder(
-          future: _fbstream,
-          builder: (BuildContext context,
-              AsyncSnapshot<Stream<DocumentSnapshot>> snapshot) {
-            if (snapshot.hasData) {
-              return StreamBuilder(
-                  stream: snapshot.data,
-                  builder: (BuildContext context,
-                      AsyncSnapshot<DocumentSnapshot> snapshot) {
-                    if (snapshot.hasError) {
-                      return Text("Error: ${snapshot.error.toString()}");
-                    } else {
-                      if (!snapshot.hasData) {
-                        return const CircularProgressIndicator();
-                      }
-                      if (kDebugMode) {
-                        print(snapshot.data);
-                      }
-                      return Text(
-                        snapshot.data!["count"].toString(),
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      );
-                    }
-                  });
-            } else if (snapshot.hasError) {
-              return Text('Error: ${snapshot.error}');
-            } else {
-              return const CircularProgressIndicator();
-            }
-          }),
-      widget.storage.isInitialized
-          ? StreamBuilder(
-              stream: FirebaseFirestore.instance
-                  .collection("example")
-                  .doc("cins467")
-                  .snapshots(),
-              builder: (BuildContext context,
-                  AsyncSnapshot<DocumentSnapshot> snapshot) {
-                if (snapshot.hasError) {
-                  return Text("Error: ${snapshot.error.toString()}");
-                } else {
-                  if (!snapshot.hasData) {
-                    return const CircularProgressIndicator();
-                  }
-                  if (kDebugMode) {
-                    print(snapshot.data);
-                  }
-                  return Text(
-                    snapshot.data!["count"].toString(),
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  );
-                }
-              })
-          : const CircularProgressIndicator(),
-      Row(
-        children: [
-          ElevatedButton(
-              onPressed: _incrementCounter, child: const Icon(Icons.add)),
-          IconButton(
-              icon: const Icon(Icons.remove),
-              tooltip: 'Decrement counter by one',
-              onPressed: _decrementCounter),
-        ],
-      )
-    ];
+    List<Widget> widgets = [];
+    if (googleUser == null) {
+      widgets.add(const Text("You are not currently signed in"));
+      widgets.add(ElevatedButton(
+          onPressed: signInWithGoogle, child: const Text("Sign In")));
+    } else {
+      widgets.add(ListTile(
+        leading: GoogleUserCircleAvatar(identity: googleUser!),
+        title: Text(googleUser!.displayName ?? ""),
+        subtitle: Text(googleUser!.email),
+      ));
+      widgets.add(Text(FirebaseAuth.instance.currentUser!.uid));
+      widgets.add(ElevatedButton(
+          onPressed: _handleSignOut, child: const Text("Sign Out")));
+    }
+    return widgets;
   }
 }
