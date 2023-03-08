@@ -105,24 +105,6 @@ class _MyHomePageState extends State<MyHomePage> {
     return _googleSignIn.disconnect();
   }
 
-  Future<void> _incrementCounter() async {
-    int count = await widget.storage.readCounter();
-    if (count <= 10) {
-      count += 1;
-    }
-    await widget.storage.writeCounter(count);
-    setState(() {});
-  }
-
-  Future<void> _decrementCounter() async {
-    int count = await widget.storage.readCounter();
-    if (count > 0) {
-      count -= 1;
-    }
-    await widget.storage.writeCounter(count);
-    setState(() {});
-  }
-
   @override
   void initState() {
     // TODO: implement initState
@@ -138,22 +120,52 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: getBody(),
+    if (googleUser == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.title),
         ),
-      ),
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: _getImage,
-      //   tooltip: 'Take Photo',
-      //   child: const Icon(Icons.add_a_photo),
-      // ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: getUnsignedBody(),
+          ),
+        ),
+        // floatingActionButton: FloatingActionButton(
+        //   onPressed: _getImage,
+        //   tooltip: 'Take Photo',
+        //   child: const Icon(Icons.add_a_photo),
+        // ), // This trailing comma makes auto-formatting nicer for build methods.
+      );
+    } else {
+      return Scaffold(
+          appBar: AppBar(
+            title: Text(widget.title),
+          ),
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: getBody(),
+            ),
+          ),
+          floatingActionButton: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: <Widget>[
+              FloatingActionButton(
+                onPressed: _handleSignOut,
+                child: Icon(Icons.logout),
+              ),
+              const SizedBox(
+                height: 10,
+              ),
+              FloatingActionButton(
+                onPressed: _getImage,
+                tooltip: 'Take Photo',
+                child: const Icon(Icons.add_a_photo),
+              ), // This trailing comma makes auto-formatting nicer for build methods.
+            ],
+          ));
+    }
   }
 
   void _getImage() async {
@@ -215,20 +227,25 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<Widget> getBody() {
     List<Widget> widgets = [];
-    if (googleUser == null) {
-      widgets.add(const Text("You are not currently signed in"));
-      widgets.add(ElevatedButton(
-          onPressed: signInWithGoogle, child: const Text("Sign In")));
-    } else {
-      widgets.add(ListTile(
-        leading: GoogleUserCircleAvatar(identity: googleUser!),
-        title: Text(googleUser!.displayName ?? ""),
-        subtitle: Text(googleUser!.email),
-      ));
-      widgets.add(Text(FirebaseAuth.instance.currentUser!.uid));
-      widgets.add(ElevatedButton(
-          onPressed: _handleSignOut, child: const Text("Sign Out")));
-    }
+    widgets.add(StreamBuilder(
+        stream: FirebaseFirestore.instance.collection("photos").snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Text(snapshot.error.toString());
+          }
+          if (!snapshot.hasData) {
+            return const Text("Loading Photos");
+          }
+          return Text("Photos");
+        }));
+    return widgets;
+  }
+
+  List<Widget> getUnsignedBody() {
+    List<Widget> widgets = [];
+    widgets.add(const Text("You are not currently signed in"));
+    widgets.add(ElevatedButton(
+        onPressed: signInWithGoogle, child: const Text("Sign In")));
     return widgets;
   }
 }
